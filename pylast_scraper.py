@@ -51,10 +51,25 @@ def save_tracks(user):
         # Stream directly to file as we get the data
         for played_track in user.get_recent_tracks(limit=None, stream=True, time_to=timestamp):
             track = played_track.track
+            # We can also get_top_artists, albums and tracks for any given tag
+            # But we wouldn't want to get these on every single listened track
+
+            # Get the top tags associated with this track
+            top_tags = []
+            for top_item, weight in track.get_top_tags():
+                top_tags.append(
+                    dict(
+                        name=top_item.name,
+                        weight=weight
+                    ))
 
             data = dict(
-                title=track.title,
+                title=track.get_correction(), # Corrected track name
+                playcount=track.get_playcount(),
                 artist=track.artist.name,
+                artist_mbid=track.artist.get_mbid(),
+                track_mbid=track.get_mbid(),
+                top_tags=top_tags,
                 album=played_track.album,
                 timestamp=played_track.timestamp,
             )
@@ -101,6 +116,7 @@ def save_continue_list(users):
 def main():
     get_api_keys()
     network = pylast.LastFMNetwork(api_key=KEYS[0])
+    network.enable_caching()
 
     # Continue from where we left off, or start over
     continue_list = get_continue_list(network)
