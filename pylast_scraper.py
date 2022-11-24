@@ -1,6 +1,7 @@
 import pylast
 import os.path
 import json
+import collections
 
 # Place one API key per line in keys.txt file in same directory
 KEYS = []
@@ -57,20 +58,17 @@ def save_tracks(user):
             # Get the top tags associated with this track
             top_tags = []
             for top_item, weight in track.get_top_tags():
-                top_tags.append(
-                    dict(
-                        name=top_item.name,
-                        weight=weight
-                    ))
+                top_tags.append({
+                        'name': top_item.name,
+                        'weight': weight
+                    })
 
             data = dict(
-                title=track.get_correction(), # Corrected track name
-                playcount=track.get_playcount(),
-                artist=track.artist.name,
-                artist_mbid=track.artist.get_mbid(),
-                track_mbid=track.get_mbid(),
+                title=track.title,
+                mbid=played_track.track_mbid,
+                artist={'name': track.artist.name, 'mbid': played_track.artist_mbid},
                 top_tags=top_tags,
-                album=played_track.album,
+                album={'name': played_track.album, 'mbid': played_track.album_mbid},
                 timestamp=played_track.timestamp,
             )
             dumped = json.dumps(data, separators=(',', ':'))
@@ -113,10 +111,33 @@ def save_continue_list(users):
             file.write(f'{user.name}\n')
 
 
+# Reimplementing pylast's function to also extract mbids
+# This avoids making extra API calls
+def _extract_played_track(self, track_node):
+    title = pylast._extract(track_node, "name")
+    track_mbid = pylast._extract(track_node, "mbid")
+    track_artist = pylast._extract(track_node, "artist")
+    artist_mbid = track_node.getElementsByTagName("artist")[0].getAttribute("mbid")
+    date = pylast._extract(track_node, "date")
+    album = pylast._extract(track_node, "album")
+    album_mbid = track_node.getElementsByTagName("album")[0].getAttribute("mbid")
+    timestamp = track_node.getElementsByTagName("date")[0].getAttribute("uts")
+    return pylast.PlayedTrack(
+        pylast.Track(track_artist, title, self.network),
+        album, date, timestamp, track_mbid, artist_mbid, album_mbid
+    )
+
+
 def main():
     get_api_keys()
     network = pylast.LastFMNetwork(api_key=KEYS[0])
     network.enable_caching()
+
+    # Override pylast's methods to get mbids
+    pylast.PlayedTrack = collections.namedtuple(
+        "PlayedTrack", ["track", "album", "playback_date", "timestamp", "track_mbid", "artist_mbid", "album_mbid"]
+    )
+    pylast.User._extract_played_track = _extract_played_track
 
     # Continue from where we left off, or start over
     continue_list = get_continue_list(network)
