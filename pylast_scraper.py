@@ -2,7 +2,10 @@ import pylast
 import os.path
 import json
 
+# Place one API key per line in keys.txt file in same directory
 KEYS = []
+START_USER = "RJ"
+HOPS = 10  # How many jumps through friendgroups to perform before stopping
 
 
 def get_api_keys():
@@ -75,7 +78,7 @@ def friend_loop(friends, limit):
             fof += other_friends
             print(f"Appended {len(other_friends)} friends")
         friends = fof
-    return friends  # The users we didn't process
+        save_continue_list(friends)  # Save just in case program crashes or we stop it
 
 
 # Get list of users to continue from
@@ -84,16 +87,15 @@ def get_continue_list(network):
     if os.path.exists("continue.txt"):
         with open("continue.txt") as file:
             for line in file:
-                # TODO does line contain \n?
-                users.append(network.get_user(line))
-                breakpoint()
+                # Make sure to remove newline char
+                users.append(network.get_user(line[:-1]))
     return users
 
 
 def save_continue_list(users):
     with open("continue.txt", 'w') as file:
         for user in users:
-            file.write(user.name)
+            file.write(f'{user.name}\n')
 
 
 def main():
@@ -103,12 +105,10 @@ def main():
     # Continue from where we left off, or start over
     continue_list = get_continue_list(network)
     if len(continue_list) <= 0:
-        user = network.get_user("grainneog24")
+        user = network.get_user(START_USER)
         continue_list = [user]
 
-    not_processed = friend_loop(continue_list, 2)
-    # Save users to continue next time
-    save_continue_list(not_processed)
+    friend_loop(continue_list, HOPS)
 
 
 if __name__ == "__main__":
