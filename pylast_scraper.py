@@ -56,8 +56,24 @@ def save_tracks(user):
             # But we wouldn't want to get these on every single listened track
 
             # Get the top tags associated with this track
+            # Sometimes tracks no longer exist so we only try a few times
+            tries = 0
+            top_tags_response = None
+            while tries < 3:
+                try:
+                    top_tags_response = track.get_top_tags()
+                    break
+                except Exception as e:
+                    print(f'Exception getting tags, trying again... {e}')
+                    tries += 1
+                    continue
+
+            # Skip this track if we can't get the tags
+            if top_tags_response is None:
+                continue
+
             top_tags = []
-            for top_item, weight in track.get_top_tags():
+            for top_item, weight in top_tags_response:
                 top_tags.append({
                         'name': top_item.name,
                         'weight': weight
@@ -93,9 +109,10 @@ def friend_loop(friends, limit):
                     other_friends = friend.get_friends(limit=None)
                     fof += other_friends
                     print(f"Appended {len(other_friends)} friends")
-                    tries = 10
+                    break
                 except KeyboardInterrupt:
                     print("Interrupt detected, stopping...")
+                    return
                 except Exception as e:
                     print(f'Exception, trying again... {e}')
                     tries += 1
