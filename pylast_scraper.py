@@ -94,7 +94,8 @@ def friend_loop(friends, limit):
                     fof += other_friends
                     print(f"Appended {len(other_friends)} friends")
                     success = True
-                except Exception:
+                except Exception as e:
+                    print(f'Exception, trying again... {e}')
                     continue
 
         friends = fof
