@@ -86,16 +86,19 @@ def friend_loop(friends, limit):
         print(f'Friends count: {len(friends)}')
         fof = []
         for friend in friends:
-            success = False
-            while not success:
+            tries = 0
+            while tries < 10:
                 try:
                     save_tracks(friend)
                     other_friends = friend.get_friends(limit=None)
                     fof += other_friends
                     print(f"Appended {len(other_friends)} friends")
-                    success = True
+                    tries = 10
+                except KeyboardInterrupt:
+                    print("Interrupt detected, stopping...")
                 except Exception as e:
                     print(f'Exception, trying again... {e}')
+                    tries += 1
                     continue
 
         friends = fof
