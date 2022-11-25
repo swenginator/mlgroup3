@@ -86,10 +86,17 @@ def friend_loop(friends, limit):
         print(f'Friends count: {len(friends)}')
         fof = []
         for friend in friends:
-            save_tracks(friend)
-            other_friends = friend.get_friends(limit=None)
-            fof += other_friends
-            print(f"Appended {len(other_friends)} friends")
+            success = False
+            while not success:
+                try:
+                    save_tracks(friend)
+                    other_friends = friend.get_friends(limit=None)
+                    fof += other_friends
+                    print(f"Appended {len(other_friends)} friends")
+                    success = True
+                except Exception:
+                    continue
+
         friends = fof
         save_continue_list(friends)  # Save just in case program crashes or we stop it
 
