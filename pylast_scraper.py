@@ -7,6 +7,8 @@ import collections
 KEYS = []
 START_USER = "RJ"
 RUNNING = True
+MAX_TRACKS = 50000  # Stop fetching user's tracks after this amount
+
 
 def get_api_keys():
     with open("keys.txt") as file:
@@ -49,7 +51,7 @@ def save_tracks(user):
 
     with open(path, 'a') as file:
         # Stream directly to file as we get the data
-        for played_track in user.get_recent_tracks(limit=50000, stream=True, time_to=timestamp):
+        for played_track in user.get_recent_tracks(limit=None, stream=True, time_to=timestamp):
             track = played_track.track
             # We can also get_top_artists, albums and tracks for any given tag
             # But we wouldn't want to get these on every single listened track
@@ -74,9 +76,9 @@ def save_tracks(user):
             top_tags = []
             for top_item, weight in top_tags_response:
                 top_tags.append({
-                        'name': top_item.name,
-                        'weight': weight
-                    })
+                    'name': top_item.name,
+                    'weight': weight
+                })
 
             data = dict(
                 title=track.title,
@@ -90,6 +92,9 @@ def save_tracks(user):
             file.write(dumped + '\n')
             track_count += 1
             print(f'Saved {track_count}/{total} tracks for {username}', end='\r')
+            if track_count >= MAX_TRACKS:
+                print(f"Reached max tracks {MAX_TRACKS} for {username}, stopping...")
+                break
 
         print(f'Saved {track_count}/{total} tracks for {username}')
 
