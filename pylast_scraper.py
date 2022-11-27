@@ -7,7 +7,7 @@ import collections
 KEYS = []
 START_USER = "RJ"
 RUNNING = True
-MAX_TRACKS = 50  # Stop fetching user's tracks after this amount
+MAX_TRACKS = 50000  # Stop fetching user's tracks after this amount
 
 
 def get_api_keys():
