@@ -6,8 +6,7 @@ import collections
 # Place one API key per line in keys.txt file in same directory
 KEYS = []
 START_USER = "RJ"
-HOPS = 10  # How many jumps through friendgroups to perform before stopping
-
+RUNNING = True
 
 def get_api_keys():
     with open("keys.txt") as file:
@@ -50,7 +49,7 @@ def save_tracks(user):
 
     with open(path, 'a') as file:
         # Stream directly to file as we get the data
-        for played_track in user.get_recent_tracks(limit=None, stream=True, time_to=timestamp):
+        for played_track in user.get_recent_tracks(limit=50000, stream=True, time_to=timestamp):
             track = played_track.track
             # We can also get_top_artists, albums and tracks for any given tag
             # But we wouldn't want to get these on every single listened track
@@ -95,10 +94,10 @@ def save_tracks(user):
         print(f'Saved {track_count}/{total} tracks for {username}')
 
 
-# Keep saving friends' track up to limit of users
+# Keep saving friends' track
 # Friends is list of users to start off from
-def friend_loop(friends, limit):
-    for _ in range(limit):
+def friend_loop(friends):
+    while RUNNING:
         print(f'Friends count: {len(friends)}')
         fof = []
         for friend in friends:
@@ -173,7 +172,7 @@ def main():
         user = network.get_user(START_USER)
         continue_list = [user]
 
-    friend_loop(continue_list, HOPS)
+    friend_loop(continue_list)
 
 
 if __name__ == "__main__":
