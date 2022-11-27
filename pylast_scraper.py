@@ -7,7 +7,7 @@ import collections
 KEYS = []
 START_USER = "RJ"
 RUNNING = True
-MAX_TRACKS = 50000  # Stop fetching user's tracks after this amount
+MAX_TRACKS = 50  # Stop fetching user's tracks after this amount
 
 
 def get_api_keys():
@@ -35,6 +35,20 @@ def get_last_timestamp(path):
         return 0
 
 
+# Get amount of lines in a file. Uses buffer for much faster read
+def get_line_count(path):
+    def _make_gen(reader):
+        while True:
+            b = reader(2 ** 16)
+            if not b:
+                break
+            yield b
+
+    with open(path, 'rb') as f:
+        count = sum(buf.count(b'\n') for buf in _make_gen(f.raw.read))
+    return count
+
+
 def save_tracks(user):
     username = user.name
     os.makedirs('saved', exist_ok=True)
@@ -46,8 +60,13 @@ def save_tracks(user):
 
     # If already saved, continue from last timestamp
     if os.path.exists(path):
+        track_count = get_line_count(path)
+        if track_count >= MAX_TRACKS:
+            print(f"Reached max tracks {MAX_TRACKS}/{total} for {username}, stopping...")
+            return
+
         timestamp = get_last_timestamp(path)
-        print(f'File for {username} already exists, continuing from {timestamp}')
+        print(f'File for {username} already exists, continuing from {track_count}/{total}')
 
     with open(path, 'a') as file:
         # Stream directly to file as we get the data
@@ -104,15 +123,14 @@ def save_tracks(user):
 def friend_loop(friends):
     while RUNNING:
         print(f'Friends count: {len(friends)}')
-        fof = []
+        fof = set()  # Use set to avoid duplicates
         for friend in friends:
             tries = 0
-            while tries < 10:
+            while tries < 5:
                 try:
                     save_tracks(friend)
-                    other_friends = friend.get_friends(limit=None)
-                    fof += other_friends
-                    print(f"Appended {len(other_friends)} friends")
+                    fof.update(friend.get_friends(limit=None))
+                    print(f"Now have {len(fof)} friends")
                     break
                 except KeyboardInterrupt:
                     print("Interrupt detected, stopping...")
