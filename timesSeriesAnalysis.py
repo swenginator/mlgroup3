@@ -26,7 +26,7 @@ for i in res:
         for line in f:
             data.append(json.loads(line))
     for i in data:
-        for j in i["top_tags"]["name"]:
+        for j in i["top_tags"]:
             try:
                 print(j)
             except:
