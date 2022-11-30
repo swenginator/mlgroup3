@@ -23,10 +23,12 @@ for filename in os.listdir(SAVED_PATH):
                 album_name = played_track['album']['name']
 
                 filtered_labels = []
-                if artist_name is not None:
+                if artist_name is not None and len(artist_name) > 0:
+                    artist_name = artist_name.replace(',', '')
                     filtered_labels.append(artist_name)
                     found_labels[artist_name] = None
-                if album_name is not None:
+                if album_name is not None and len(album_name) > 0:
+                    album_name = album_name.replace(',', '')
                     filtered_labels.append(album_name)
                     found_labels[album_name] = None
 
@@ -35,7 +37,12 @@ for filename in os.listdir(SAVED_PATH):
                 for label in top_tags:
                     if count > 5:  # Only get top 5 tags for each track
                         break
-                    name = label['name'].replace('-', '').lower()
+                    if label is None:
+                        continue
+                    name = label['name']
+                    if name is None or len(name) < 0:
+                        continue
+                    name = name.replace('-', '').replace(',', '').lower()
                     weight = int(label['weight'])
                     if len(re.findall(r'\d+', name)) <= 0 and weight > 50:
                         filtered_labels.append(name)
@@ -46,6 +53,8 @@ for filename in os.listdir(SAVED_PATH):
                 played_tracks.append(filtered_labels)
 
 with open(OUTPUT_NAME, "w") as file:
+    if None in found_labels:
+        del found_labels[None]
     # Write column headers
     column_headers = list(found_labels)
     for i in range(len(column_headers) - 1):
