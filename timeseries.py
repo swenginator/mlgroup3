@@ -2,12 +2,18 @@ import os
 import json
 import pandas
 import re
+import numpy as np
+
+from sklearn.linear_model import Ridge
+from sklearn.model_selection import train_test_split
+
 
 SAVED_PATH = "saved"
 
 
 def load_into_pandas():
     for filename in os.listdir(SAVED_PATH):
+        print(filename)
         # Have to use dict instead of set cause it's sorted
         found_tags = dict()  # Store all unique occurrences of each tag
         played_tracks = []
@@ -65,9 +71,28 @@ def load_into_pandas():
     #print("Played tracks:")
     #[print(track) for track in played_tracks]
 
+def test_preds(q, lag, input):
+    stride = 1
+    X1 = input[0:input.size - q - lag: stride]
+    for i in range(1,lag):
+        X = input[i:input.size - q - (lag - i): stride]
+        X1 = np.column_stack((X1,X))
+    input1 = input[lag + q: stride]
+    train,test = train_test_split(np.arange(0,input.size),test_size=0.2)
+    
+    model = Ridge(fit_intercept = False).fit(X1[train],input1[train])
+    
+    ret = ()
+    y_pred = model.predict(X1[test])
+    ret.append(y_pred)
+    y = model.predict(input[test])
+    ret.append(y)
+    return ret
+    
 
 def main():
     load_into_pandas()
+    test_preds(1,0,holder)
 
 
 if __name__ == "__main__":
