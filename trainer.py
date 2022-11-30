@@ -6,6 +6,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
 
 CSV_PATH = "playedtracks.csv"
+MODEL_NAME = "model.sav"
 
 
 # Take in dataframe and return trained model
@@ -25,8 +26,8 @@ def main():
     print(f"Data loaded into dataframe of shape {df.shape}")
     model = train_model(df)
     print("Model trained")
-    pickle.dump(model, open("KNN_model.sav", 'wb'))
-    print("Model saved to KNN_model.sav")
+    pickle.dump(model, open(MODEL_NAME, 'wb'))
+    print(f"Model saved to {MODEL_NAME}")
 
 
 if __name__ == "__main__":
