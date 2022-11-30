@@ -1,5 +1,6 @@
 import pandas
 import numpy
+import pickle
 
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
@@ -18,19 +19,14 @@ def train_model(df):
 
     return pandas.DataFrame(data_similarity_df.columns[model], index=data_similarity_df.index)
 
-# Take in trained model and last few played tracks for specific user
-# and predict most likely tracks
-def make_prediction(model, played_tracks):
-    print("Predicting...")
-    # TODO predict and just print out top ten for now
-
 
 def main():
     df = pandas.read_csv(CSV_PATH, dtype=numpy.uint8)
     print(f"Data loaded into dataframe of shape {df.shape}")
-    breakpoint()
     model = train_model(df)
-    print(f"Model trained, intercept: {model.intercept_}, coefs: {model.coef_}")
+    print("Model trained")
+    pickle.dump(model, open("KNN_model.sav", 'wb'))
+    print("Model saved to KNN_model.sav")
 
 
 if __name__ == "__main__":
