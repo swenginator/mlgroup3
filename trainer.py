@@ -8,10 +8,9 @@ import time
 
 from sklearn.neighbors import NearestNeighbors
 
-CSV_PATH = "playedtracks.csv"
+CSV_PATH = "labels.csv"
 MODEL_NAME = "model.sav"
 SAVED_PATH = "saved"
-TEST_DATA_PATH = "test_data"
 TEST_DATA_TRACKS = 100
 
 
@@ -77,12 +76,22 @@ def process_data():
 
     total_taken = time.time() - start_time_total
     print(f'Took {total_taken} to process all files')
+    print("Saving labels...")
+    save_labels(list(found_labels.keys()))
     print('Loading into dataframe...')
     start_time = time.time()
     df = put_into_dataframe(found_labels, played_tracks)
     time_taken = time.time() - start_time
     print(f"Time taken: {time_taken}")
     return df
+
+
+# Save list of labels to csv
+def save_labels(labels):
+    with open(CSV_PATH, "w") as file:
+        for i in range(len(labels) - 1):
+            file.write(labels[i] + ",")
+        file.write(labels[-1] + '\n')
 
 
 def put_into_dataframe(found_labels, played_tracks):
