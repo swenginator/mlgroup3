@@ -1,8 +1,9 @@
 import os
 import json
 import re
+import time
 
-SAVED_PATH = "saved"
+SAVED_PATH = "/home/yee/mldata"
 TEST_DATA_PATH = "test_data"
 TRAIN_DATA_FILENAME = "playedtracks.csv"
 TEST_DATA_TRACKS = 100
@@ -13,13 +14,16 @@ def process_data():
     # Have to use dict instead of set because it's sorted
     found_labels = dict()  # Store all unique occurrences of each tag, artist name, album name
     played_tracks = []
-    test_tracks = []
+
+    start_time_total = time.time()
 
     # Get training data from user files
     for filename in os.listdir(SAVED_PATH):
         filepath = os.path.join(SAVED_PATH, filename)
         if os.path.isfile(filepath):
             with open(filepath) as file:
+                test_tracks = []
+                user_time = time.time()
                 username = filename.replace(".json", '')
                 print(f'Processing data for {username}')
                 line_count = 0
@@ -67,11 +71,23 @@ def process_data():
                     else:
                         played_tracks.append(filtered_labels)
 
+            user_taken = time.time() - user_time
+            print(f'Processed {line_count} lines in {user_taken}')
             # Save test data for this user
+            print(f"Saving test data for {username}")
+            save_user_start = time.time()
             save_to_csv(os.path.join(TEST_DATA_PATH, f'{username}.csv'), found_labels, test_tracks)
+            save_user_time = time.time() - save_user_start
+            print(f'Took {save_user_time} to save {username}')
 
+    total_taken = time.time() - start_time_total
+    print(f'Took {total_taken} to process all files')
     # Save training data
+    print(f'Saving training data')
+    start_time = time.time()
     save_to_csv(TRAIN_DATA_FILENAME, found_labels, played_tracks)
+    time_taken = time.time() - start_time
+    print(f"Time taken: {time_taken}")
 
 
 def save_to_csv(filename, found_labels, played_tracks):
