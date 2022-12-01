@@ -12,7 +12,9 @@ MODEL_NAME = "model.sav"
 def train_model(df):
     print("Training model...")
     # Similarity between each played track and every other played track, shape df rows x df rows
-    return NearestNeighbors(n_neighbors=len(df.index), algorithm='brute', metric='cosine').fit(X=df)
+    neigh = NearestNeighbors(n_neighbors=len(df.index), algorithm='brute', metric='cosine').fit(X=df)
+
+    return neigh
 
 
 def main():
@@ -22,6 +24,7 @@ def main():
     print("Model trained")
     pickle.dump(model, open(MODEL_NAME, 'wb'))
     print(f"Model saved to {MODEL_NAME}")
+    print(model.shape)
 
 
 if __name__ == "__main__":
