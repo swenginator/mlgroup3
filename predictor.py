@@ -6,15 +6,16 @@ import numpy
 from sklearn.neighbors import NearestNeighbors
 
 CSV_PATH = "test_data"
-MODEL_NAME = "KNN_model.sav"
+MODEL_NAME = "model.sav"
 
 
-def predict_model(model, df):
+def predict_model(model):
     for filename in os.listdir(CSV_PATH):
         filepath = os.path.join(CSV_PATH,filename)
         if os.path.exists(filepath):
             df = pandas.read_csv(filepath, dtype=numpy.uint8)
-            predictions = model.kneighbors(X=df.iloc[:1], n_neighbors=15, return_distance=False)
+            print(df)
+            predictions = model.kneighbors(X=df, n_neighbors=15, return_distance=False)
             for indices in predictions:
                 for i in indices:
                     print(df.columns[i])
