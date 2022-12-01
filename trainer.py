@@ -12,14 +12,7 @@ MODEL_NAME = "model.sav"
 def train_model(df):
     print("Training model...")
     # Similarity between each played track and every other played track, shape df rows x df rows
-    neigh = NearestNeighbors(n_neighbors=len(df.index), algorithm='brute', metric='cosine').fit(X=df)
-    # TODO make prediction on the test data not the training data
-    predictions = neigh.kneighbors(X=df.iloc[:1], n_neighbors=15, return_distance=False)
-    for indices in predictions:
-        for i in indices:
-            print(df.columns[i])
-
-    return neigh
+    return NearestNeighbors(n_neighbors=len(df.index), algorithm='brute', metric='cosine').fit(X=df)
 
 
 def main():
