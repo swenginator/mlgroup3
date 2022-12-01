@@ -14,9 +14,7 @@ def predict_model(model, df):
         filepath = os.path.join(CSV_PATH,filename)
         if os.path.exists(filepath):
             df = pandas.read_csv(filepath, dtype=numpy.uint8)
-            neigh = NearestNeighbors(n_neighbors=len(df.index), algorithm='brute', metric='cosine').fit(X=df)
-            
-            predictions = neigh.kneighbors(X=df.iloc[:1], n_neighbors=15, return_distance=False)
+            predictions = model.kneighbors(X=df.iloc[:1], n_neighbors=15, return_distance=False)
             for indices in predictions:
                 for i in indices:
                     print(df.columns[i])
