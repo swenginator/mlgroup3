@@ -21,7 +21,7 @@ def process_data():
         if os.path.isfile(filepath):
             with open(filepath) as file:
                 username = filename.replace(".json", '')
-                print(f'Processing training data for {username}')
+                print(f'Processing data for {username}')
                 line_count = 0
                 # Use most recent tracks as test data
                 for line in file:
@@ -75,7 +75,7 @@ def process_data():
 
 
 def save_to_csv(filename, found_labels, played_tracks):
-    with open(filename, "w") as file:
+    with open(filename, "w", encoding="utf8") as file:
         if None in found_labels:
             del found_labels[None]
         # Write column headers
