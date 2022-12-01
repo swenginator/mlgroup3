@@ -24,11 +24,11 @@ for filename in os.listdir(SAVED_PATH):
 
                 filtered_labels = []
                 if artist_name is not None and len(artist_name) > 0:
-                    artist_name = artist_name.replace(',', '')
+                    artist_name = "artist_" + artist_name.replace(',', '')
                     filtered_labels.append(artist_name)
                     found_labels[artist_name] = None
                 if album_name is not None and len(album_name) > 0:
-                    album_name = album_name.replace(',', '')
+                    album_name = "album_" + album_name.replace(',', '')
                     filtered_labels.append(album_name)
                     found_labels[album_name] = None
 
@@ -42,7 +42,7 @@ for filename in os.listdir(SAVED_PATH):
                     name = label['name']
                     if name is None or len(name) < 0:
                         continue
-                    name = name.replace('-', '').replace(',', '').lower()
+                    name = "tag_" + name.replace('-', '').replace(',', '').lower()
                     weight = int(label['weight'])
                     if len(re.findall(r'\d+', name)) <= 0 and weight > 50:
                         filtered_labels.append(name)
