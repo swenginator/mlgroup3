@@ -1,11 +1,10 @@
 import os
-import pandas
-import numpy
 import pickle
 import json
 import re
 import time
 import csv
+from scipy.sparse import csr_array
 
 LABELS_PATH = "labels.csv"
 INDEX_PATH = "index.csv"  # Indices of training tracks
@@ -89,7 +88,7 @@ def load_test_data():
     print(f'Took {total_taken} to process all files')
     print('Loading into dataframe...')
     start_time = time.time()
-    df = put_into_dataframe(found_labels, query_track_labels)
+    df = put_into_matrix(found_labels, query_track_labels)
     time_taken = time.time() - start_time
     print(f"Time taken: {time_taken}")
     return df, query_tracks, future_tracks
@@ -129,26 +128,31 @@ def load_labels():
     return labels
 
 
-def put_into_dataframe(found_labels, played_tracks):
+def put_into_matrix(found_labels, played_tracks):
     if None in found_labels:
         del found_labels[None]
 
     column_headers = found_labels.keys()
-    rows = list()
 
-    # Make dense array
-    for played_track in played_tracks:
-        row = []
-        for label in column_headers:
-            row.append(1 if label in played_track else 0)
+    row_indices = []
+    col_indices = []
+    data = []
 
-        # Make numpy array of indices where it's 1
-        sparr = pandas.arrays.SparseArray(row, fill_value=0)
-        del row
-        rows.append(sparr)
+    # Make sparse array
+    for row_index, labels in enumerate(played_tracks):
+        for col_index, label in enumerate(column_headers):
+            if label in labels:
+                data.append(1)
+                row_indices.append(row_index)
+                col_indices.append(col_index)
 
-    df = pandas.DataFrame(rows, columns=column_headers, dtype=numpy.uint8)
-    return df
+    sparr = csr_array((data, (row_indices, col_indices)),
+                      shape=(len(played_tracks), len(column_headers)),
+                      dtype=int)
+
+    # df = pandas.DataFrame(rows, columns=column_headers, dtype=numpy.uint8)
+    return sparr
+
 
 
 # Returns dict where keys are usernames, values list of tuples of (query, list(predictions))
@@ -163,7 +167,6 @@ def predict_model(model):
     for query in predictions:
         predicted_tracks = list()  # This will be predictions for a single query
         for predicted_track_index in query:
-            print(f'Pred index: {predicted_track_index}')
             username, linenum = track_index[predicted_track_index]
             predicted_track = get_track(username, int(linenum))
             predicted_tracks.append(predicted_track)

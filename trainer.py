@@ -93,7 +93,7 @@ def process_data():
     save_index(played_tracks)
     print('Loading into dataframe...')
     start_time = time.time()
-    df = put_into_dataframe(found_labels, played_tracks)
+    df = put_into_matrix(found_labels, played_tracks)
     time_taken = time.time() - start_time
     print(f"Time taken: {time_taken}")
     return df
@@ -116,7 +116,7 @@ def save_index(played_tracks):
             writer.writerow([user, index])
 
 
-def put_into_dataframe(found_labels, played_tracks):
+def put_into_matrix(found_labels, played_tracks):
     if None in found_labels:
         del found_labels[None]
 
