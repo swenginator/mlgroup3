@@ -102,14 +102,14 @@ def process_data():
 
 # Save list of labels to csv
 def save_labels(labels):
-    with open(LABELS_PATH, "w", encoding="utf8") as file:
+    with open(LABELS_PATH, "w", encoding="utf8", newline='') as file:
         writer = csv.writer(file)
         writer.writerow(labels)
 
 
 # Get list of played tracks and save index of user and row
 def save_index(played_tracks):
-    with open(INDEX_PATH, "w", encoding="utf8") as file:
+    with open(INDEX_PATH, "w", encoding="utf8", newline='') as file:
         writer = csv.writer(file)
         for track in played_tracks:
             user = track['user']

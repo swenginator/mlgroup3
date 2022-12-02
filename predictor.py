@@ -110,7 +110,7 @@ def get_track(username: str, linenum: int):
 # Index is list of tuples of (username, linenum)
 def load_index():
     index = list()
-    with open(INDEX_PATH, encoding="utf8") as csvfile:
+    with open(INDEX_PATH, encoding="utf8", newline='') as csvfile:
         for row in csv.reader(csvfile):
             row_tuple = ()
             for item in row:
@@ -121,7 +121,7 @@ def load_index():
 
 def load_labels():
     labels = dict()
-    with open(LABELS_PATH, encoding="utf8") as csvfile:
+    with open(LABELS_PATH, encoding="utf8", newline='') as csvfile:
         for row in csv.reader(csvfile):
             for label in row:
                 labels[label] = None
