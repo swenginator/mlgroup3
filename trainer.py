@@ -27,9 +27,11 @@ def process_data():
     # Have to use dict instead of set because it's sorted
     found_labels = dict()  # Store all unique occurrences of each tag, artist name, album name
     unique_tracks = set()  # Set of tuples (artist, title) to avoid duplicates
+    unique_artists = set()  # Set of tuples (artist, title) to avoid duplicates
     played_tracks_tags = []
     played_tracks_by_user = dict()  # Dict where keys are usernames and value lists of their played tracks
     query_tracks = dict()
+
 
     start_time_total = time.time()
 
@@ -66,6 +68,8 @@ def process_data():
                         continue
                     else:
                         unique_tracks.add((artist_name, title))
+
+                    unique_artists.add(artist_name)
 
                     filtered_labels = []
                     if artist_name is not None and len(artist_name) > 0:
@@ -104,6 +108,13 @@ def process_data():
 
     total_taken = time.time() - start_time_total
     print(f'Took {total_taken} to process all files')
+
+    # Print stats
+    print(f'Total labels: {len(found_labels)}')
+    print(f'Unique tracks: {len(unique_tracks)}')
+    print(f'Unique tracks: {len(unique_artists)}')
+    print(f'Amount of users: {len(played_tracks_by_user)}')
+
     print("Saving labels...")
     save_labels(list(found_labels.keys()))
     print("Saving index...")
