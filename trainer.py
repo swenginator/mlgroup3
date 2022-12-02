@@ -1,4 +1,3 @@
-import pandas
 import numpy
 import pickle
 import os
@@ -6,6 +5,7 @@ import json
 import re
 import time
 import csv
+from scipy.sparse import csr_array
 
 from sklearn.neighbors import NearestNeighbors
 
@@ -122,29 +122,34 @@ def put_into_dataframe(found_labels, played_tracks):
         del found_labels[None]
 
     column_headers = found_labels.keys()
-    rows = list()
 
-    # Make dense array
-    for played_track in played_tracks:
+    row_indices = []
+    col_indices = []
+    data = []
+    # Matrix should be len(played_tracks) * len(column_headers)
+
+    # Make sparse array
+    for row_index, played_track in enumerate(played_tracks):
         track_labels = played_track['labels']
-        row = []
-        for label in column_headers:
-            row.append(1 if label in track_labels else 0)
+        for col_index, label in enumerate(column_headers):
+            if label in track_labels:
+                data.append(1)
+                row_indices.append(row_index)
+                col_indices.append(row_index)
 
-        # Make numpy array of indices where it's 1
-        sparr = pandas.arrays.SparseArray(row, fill_value=0)
-        del row
-        rows.append(sparr)
+    sparr = csr_array((data, (row_indices, col_indices)),
+                      shape=(len(played_tracks), len(column_headers)),
+                      dtype=int)
 
-    df = pandas.DataFrame(rows, columns=column_headers, dtype=numpy.uint8)
-    return df
+    # df = pandas.DataFrame(rows, columns=column_headers, dtype=numpy.uint8)
+    return sparr
 
 
 # Take in dataframe and return trained model
 def train_model(df):
     print("Training model...")
     # Similarity between each played track and every other played track, shape df rows x df rows
-    return NearestNeighbors(n_neighbors=len(df.index), algorithm='brute', metric='cosine').fit(X=df)
+    return NearestNeighbors(algorithm='brute', metric='cosine', n_jobs=-1).fit(X=df)
 
 
 def main():
