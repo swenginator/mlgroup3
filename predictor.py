@@ -98,7 +98,7 @@ def load_test_data():
 # Return specified track object
 def get_track(username: str, linenum: int):
     # Open up specified user file
-    with open(os.path.join(SAVED_PATH, f'{username}.json'), encoding="utf8") as file:
+    with open(os.path.join(SAVED_PATH, f'{username}.json')) as file:
         index = 0
         for line in file:
             if index < linenum:
@@ -110,7 +110,7 @@ def get_track(username: str, linenum: int):
 # Index is list of tuples of (username, linenum)
 def load_index():
     index = list()
-    with open(INDEX_PATH, encoding="utf8", newline='') as csvfile:
+    with open(INDEX_PATH, encoding="utf8",newline='') as csvfile:
         for row in csv.reader(csvfile):
             row_tuple = ()
             for item in row:
@@ -121,7 +121,7 @@ def load_index():
 
 def load_labels():
     labels = dict()
-    with open(LABELS_PATH, encoding="utf8", newline='') as csvfile:
+    with open(LABELS_PATH, encoding="utf8",newline='') as csvfile:
         for row in csv.reader(csvfile):
             for label in row:
                 labels[label] = None
@@ -163,6 +163,7 @@ def predict_model(model):
     for query in predictions:
         predicted_tracks = list()  # This will be predictions for a single query
         for predicted_track_index in query:
+            print(f'Pred index: {predicted_track_index}')
             username, linenum = track_index[predicted_track_index]
             predicted_track = get_track(username, int(linenum))
             predicted_tracks.append(predicted_track)
@@ -179,6 +180,43 @@ def predict_model(model):
 
     return results
 
+def compare(username, result):
+    future_tacks = result.future_tracks[username]
+    query_tracks = result.query_tracks
+    predicted_tracks = result.predicted_tracks
+    
+    predicted_titles = set()
+    predicted_artists = set()
+    predicted_albums = set()
+    predicted_tags = set()
+    
+    count = 0
+    titles_correct = 0
+    artists_correct = 0
+    albums_correct = 0
+    tags_correct = 0
+    
+    for i in range(len(query_tracks)):
+        predicted_titles.add(result.query_tracks[i]['title'])
+        predicted_artists.add(result.query_tracks[i]['artist']['name'])
+        #predicted_albums.add(result.query_tracks[i]['albums'])
+        #predicted_titles.add(result.query_tracks[i]['tags'])
+        for prediction in result.predicted_tracks[i]:
+            predicted_titles.add(prediction['title'])
+            predicted_artists.add(prediction['artist']['name'])
+            #predicted_albums.add(prediction['album'])
+    
+    for track in future_tacks:
+        titles_correct+= int(track['title'] in predicted_titles)
+        artists_correct+= int(track['artist']['name'] in predicted_titles)
+        #albums_correct+= int(track['album'] in predicted_titles)
+        count+=1
+    print(f"Titles: {titles_correct/count}")
+    print(f"Artists: {titles_correct/count}")
+    #print(f"Albums: {titles_correct/count}")
+    
+    
+    
 
 class Result:
     future_tracks: list  # The most recent of the user's tracks
@@ -196,18 +234,17 @@ def main():
     results = predict_model(loaded_model)
 
     for username, result in results.items():
-        future_tracks = result.future_tracks
+        compare(username, result)
         for i in range(len(result.query_tracks)):
             query = result.query_tracks[i]
-            print(f"Query track from {username}:")
-            print(f"{query['artist']['name']} - {query['title']}")
-            print("Predicted tracks:")
-            for prediction in result.predicted_tracks[i]:
-                print(f"{prediction['artist']['name']} - {prediction['title']}")
-            print()
-
-        print()
-        print()
+            #print(f"Query track from {username}:")
+            #print(f"{query['artist']['name']} - {query['title']}")
+            #print("Predicted tracks:")
+            #for prediction in result.predicted_tracks[i]:
+                #print(f"{prediction['artist']['name']} - {prediction['title']}")
+            #print()
+        #print()
+        #print()
 
 
 if __name__ == "__main__":
