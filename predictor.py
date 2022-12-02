@@ -8,22 +8,16 @@ from scipy.sparse import csr_array
 
 LABELS_PATH = "labels.csv"
 INDEX_PATH = "index.csv"  # Indices of training tracks
-SAVED_PATH = "saved2"
+SAVED_PATH = "saved"
 TEST_DATA_TRACKS = 100
 QUERY_TRACKS = 10
 MODEL_NAME = "model.sav"
-
-titles_total = 0
-artists_total = 0
-albums_total = 0
-tags_total = 0
-
-users = 0
+METRICS = ['l1', 'manhattan', 'cityblock', 'cosine', 'l2', 'euclidean']
 
 
 # Get query tracks and "future" tracks
 # e.g. use 10 test tracks to predict next 90 and compare
-# Returns dataframe, query tracks, and list of future tracks
+# Returns matrix, query tracks, and list of future tracks
 def load_test_data():
     # Have to use dict instead of set because it's sorted
     found_labels = load_labels()
@@ -93,7 +87,7 @@ def load_test_data():
 
     total_taken = time.time() - start_time_total
     print(f'Took {total_taken} to process all files')
-    print('Loading into dataframe...')
+    print('Loading into matrix...')
     start_time = time.time()
     df = put_into_matrix(found_labels, query_track_labels)
     time_taken = time.time() - start_time
@@ -153,6 +147,7 @@ def put_into_matrix(found_labels, played_tracks):
                 row_indices.append(row_index)
                 col_indices.append(col_index)
 
+    print("Putting into sparse array...")
     sparr = csr_array((data, (row_indices, col_indices)),
                       shape=(len(played_tracks), len(column_headers)),
                       dtype=int)
@@ -160,7 +155,6 @@ def put_into_matrix(found_labels, played_tracks):
     return sparr
 
 
-# Returns dict where keys are usernames, values list of tuples of (query, list(predictions))
 def predict_model(model):
     track_index = load_index()
     df, query_tracks, future_tracks = load_test_data()
@@ -189,67 +183,64 @@ def predict_model(model):
     return results
 
 
+# Compares predicted tracks for a given user to what they actually listened to
 def compare(username, result, averages):
     future_tacks = result.future_tracks[username]
-    query_tracks = result.query_tracks
-    predicted_tracks = result.predicted_tracks
+    predictions = result.predicted_tracks
 
     predicted_titles = set()
     predicted_artists = set()
     predicted_albums = set()
     predicted_tags = set()
-    
+
     count = 0
     titles_correct = 0
     artists_correct = 0
     albums_correct = 0
     tags_correct = 0
+    total_tags = 0
 
-    for i in range(len(query_tracks)):
-        #print(result.query_tracks[i]['top_tags']['name'])
-        predicted_titles.add(result.query_tracks[i]['title'])
-        predicted_artists.add(result.query_tracks[i]['artist']['name'])
-        predicted_albums.add(result.query_tracks[i]['album']['name'])
-        for j in result.query_tracks[i]['top_tags']:
-            #print(j['name'])
-            predicted_titles.add(j['name'])
-        for prediction in result.predicted_tracks[i]:
-            predicted_titles.add(prediction['title'])
-            predicted_artists.add(prediction['artist']['name'])
-            predicted_albums.add(prediction['album']['name'])
+    for prediction in predictions:
+        for predicted_track in prediction:
+            predicted_titles.add(predicted_track['title'])
+            predicted_artists.add(predicted_track['artist']['name'])
+            predicted_albums.add(predicted_track['album']['name'])
+
+            # Add top 5 tags
             counter = 0
-            for j in prediction['top_tags']:
-                if counter <= 5 and int(j['weight']) >= 50:
-                    predicted_tags.add(j['name'])
-                    counter+=1
+            for tag in predicted_track['top_tags']:
+                if count > 5:
+                    break
+                if int(tag['weight']) >= 50:
+                    predicted_tags.add(tag['name'])
+                    counter += 1
+
     for track in future_tacks:
         titles_correct += int(track['title'] in predicted_titles)
         artists_correct += int(track['artist']['name'] in predicted_artists)
         albums_correct += int(track['album']['name'] in predicted_albums)
-        found = False
+
         for tag in track['top_tags']:
-            if found:
-                break
-            if int(tag['weight']) >= 50 and tag['name'] in predicted_tags:
-                found = True
-                tags_correct+=1
-        
+            if int(tag['weight']) >= 50:
+                total_tags += 1
+                if tag['name'] in predicted_tags:
+                    tags_correct += 1
+
         count += 1
     print(username)
-    print("Titles: {:.2%}".format(titles_correct/count))
-    print("Artist: {:.2%}".format(artists_correct/count))
-    print("Album: {:.2%}".format(albums_correct/count))
-    print("Tags: {:.2%}".format(tags_correct/count))
+    print("Titles: {:.2%}".format(titles_correct / count))
+    print("Artist: {:.2%}".format(artists_correct / count))
+    print("Album: {:.2%}".format(albums_correct / count))
+    print("Tags: {:.2%}".format(tags_correct / total_tags))
     print("----------")
     print()
-    
-    averages[0]+=1
-    
-    averages[1] += titles_correct/count
-    averages[2] += artists_correct/count
-    averages[3] += albums_correct/count
-    averages[4] += tags_correct/count
-    
+
+    averages[0] += 1
+
+    averages[1] += titles_correct / count
+    averages[2] += artists_correct / count
+    averages[3] += albums_correct / count
+    averages[4] += tags_correct / total_tags
 
 
 class Result:
@@ -264,21 +255,18 @@ class Result:
 
 
 def main():
-    
-    averages = [0,0,0,0,0]
+    averages = [0, 0, 0, 0, 0]
     loaded_model = pickle.load(open(MODEL_NAME, 'rb'))
     results = predict_model(loaded_model)
 
     for username, result in results.items():
         compare(username, result, averages)
-        for i in range(len(result.query_tracks)):
-            query = result.query_tracks[i]
-    
+
     print("Overall Average")
-    print("Title: {:.2%}".format(averages[1]/averages[0]))
-    print("Artist: {:.2%}".format(averages[2]/averages[0]))
-    print("Album: {:.2%}".format(averages[3]/averages[0]))
-    print("Tags: {:.2%}".format(averages[4]/averages[0]))
+    print("Title: {:.2%}".format(averages[1] / averages[0]))
+    print("Artist: {:.2%}".format(averages[2] / averages[0]))
+    print("Album: {:.2%}".format(averages[3] / averages[0]))
+    print("Tags: {:.2%}".format(averages[4] / averages[0]))
 
 
 if __name__ == "__main__":

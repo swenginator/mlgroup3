@@ -143,7 +143,6 @@ def put_into_matrix(found_labels, played_tracks):
                       shape=(len(played_tracks), len(column_headers)),
                       dtype=int)
 
-    # df = pandas.DataFrame(rows, columns=column_headers, dtype=numpy.uint8)
     return sparr
 
 
