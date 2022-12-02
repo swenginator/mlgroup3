@@ -13,8 +13,9 @@ from sklearn.neighbors import NearestNeighbors
 LABELS_PATH = "labels.csv"  # Save the found labels for prediction time
 INDEX_PATH = "index.csv"  # Save indices of training tracks for prediction time
 MODEL_NAME = "model.sav"
-SAVED_PATH = "/home/yee/mldata"
+SAVED_PATH = "saved"
 TEST_DATA_TRACKS = 100
+METRICS = ['l1', 'manhattan', 'cityblock', 'cosine', 'l2', 'euclidean']
 
 
 # Process user listened tracks
@@ -136,6 +137,8 @@ def put_into_matrix(found_labels, played_tracks):
                 row_indices.append(row_index)
                 col_indices.append(col_index)
 
+    print("Creating sparse array...")
+
     sparr = csr_array((data, (row_indices, col_indices)),
                       shape=(len(played_tracks), len(column_headers)),
                       dtype=int)
@@ -145,20 +148,21 @@ def put_into_matrix(found_labels, played_tracks):
 
 
 # Take in dataframe and return trained model
-def train_model(df):
-    print("Training model...")
-    # Similarity between each played track and every other played track, shape df rows x df rows
-    return NearestNeighbors(algorithm='brute', metric='cosine', n_jobs=-1).fit(X=df)
+def train_models(df):
+    for metric in METRICS:
+        print(f"Training model with {metric} metric...")
+        # Similarity between each played track and every other played track, shape df rows x df rows
+        model = NearestNeighbors(algorithm='brute', metric=metric, n_jobs=-1).fit(X=df)
+        print("Model trained")
+        pickle.dump(model, open(f'{metric}_{MODEL_NAME}', 'wb'))
+        print(f"Model saved to {metric}_{MODEL_NAME}")
 
 
 def main():
     print("Loading data...")
     df = process_data()
     print(f"Data loaded into dataframe of shape {df.shape}")
-    model = train_model(df)
-    print("Model trained")
-    pickle.dump(model, open(MODEL_NAME, 'wb'))
-    print(f"Model saved to {MODEL_NAME}")
+    train_models(df)
 
 
 if __name__ == "__main__":
