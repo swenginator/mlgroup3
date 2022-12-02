@@ -16,7 +16,7 @@ MODEL_NAME = "model.sav"
 
 # Get query tracks and "future" tracks
 # e.g. use 10 test tracks to predict next 90 and compare
-# Returns dataframe, query tracks, and list of future tracks
+# Returns matrix, query tracks, and list of future tracks
 def load_test_data():
     # Have to use dict instead of set because it's sorted
     found_labels = load_labels()
@@ -86,7 +86,7 @@ def load_test_data():
 
     total_taken = time.time() - start_time_total
     print(f'Took {total_taken} to process all files')
-    print('Loading into dataframe...')
+    print('Loading into matrix...')
     start_time = time.time()
     df = put_into_matrix(found_labels, query_track_labels)
     time_taken = time.time() - start_time

@@ -13,7 +13,7 @@ from sklearn.neighbors import NearestNeighbors
 LABELS_PATH = "labels.csv"  # Save the found labels for prediction time
 INDEX_PATH = "index.csv"  # Save indices of training tracks for prediction time
 MODEL_NAME = "model.sav"
-SAVED_PATH = "saved"
+SAVED_PATH = "/home/yee/mldata"
 TEST_DATA_TRACKS = 100
 
 
@@ -91,7 +91,7 @@ def process_data():
     save_labels(list(found_labels.keys()))
     print("Saving index...")
     save_index(played_tracks)
-    print('Loading into dataframe...')
+    print('Loading into matrix...')
     start_time = time.time()
     df = put_into_matrix(found_labels, played_tracks)
     time_taken = time.time() - start_time
