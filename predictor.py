@@ -1,4 +1,3 @@
-import pickle
 import os
 import pandas
 import numpy
@@ -10,7 +9,8 @@ import csv
 
 from sklearn.neighbors import NearestNeighbors
 
-CSV_PATH = "labels.csv"
+LABELS_PATH = "labels.csv"
+INDEX_PATH = "index.csv"  # Indices of training tracks
 SAVED_PATH = "saved"
 TEST_DATA_TRACKS = 100
 MODEL_NAME = "model.sav"
@@ -84,9 +84,33 @@ def load_test_data():
     return df
 
 
+# Return specified track object
+def get_track(username: str, linenum: int):
+    # Open up specified user file
+    with open(os.path.join(SAVED_PATH, f'{username}.json')) as file:
+        index = 0
+        for line in file:
+            if index < linenum:
+                index += 1
+            else:
+                return json.loads(line)
+
+
+# Index is list of tuples of (username, linenum)
+def load_index():
+    index = list()
+    with open(INDEX_PATH) as csvfile:
+        for row in csv.reader(csvfile):
+            row_tuple = ()
+            for item in row:
+                row_tuple += (item,)
+            index.append(row_tuple)
+    return index
+
+
 def load_labels():
     labels = dict()
-    with open(CSV_PATH) as csvfile:
+    with open(LABELS_PATH) as csvfile:
         for row in csv.reader(csvfile):
             for label in row:
                 labels[label] = None
@@ -117,11 +141,15 @@ def put_into_dataframe(found_labels, played_tracks):
 
 
 def predict_model(model):
+    track_index = load_index()
     df = load_test_data()
-    predictions = model.kneighbors(X=df, n_neighbors=15, return_distance=False)
-    for indices in predictions:
-        for i in indices:
-            print(df.columns[i])
+    # Only predict from one track for testing
+    predictions = model.kneighbors(X=df.iloc[:1], n_neighbors=20, return_distance=False)
+    for queries in predictions:
+        for i in queries:
+            username, linenum = track_index[i]
+            predicted_track = get_track(username, int(linenum))
+            print(predicted_track)
 
 
 def main():
