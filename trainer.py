@@ -4,6 +4,8 @@ import json
 import re
 import time
 import csv
+import random
+import itertools
 from scipy.sparse import csr_array
 
 from sklearn.neighbors import NearestNeighbors
@@ -14,7 +16,9 @@ LABELS_PATH = "labels.csv"  # Save the found labels for prediction time
 INDEX_PATH = "index.csv"  # Save indices of training tracks for prediction time
 MODEL_NAME = "model.sav"
 SAVED_PATH = "saved"
+BASELINES_PATH = "baselines"
 TEST_DATA_TRACKS = 100
+QUERY_TRACKS = 10
 METRICS = ['l1', 'manhattan', 'cityblock', 'cosine', 'l2', 'euclidean']
 
 
@@ -23,7 +27,9 @@ def process_data():
     # Have to use dict instead of set because it's sorted
     found_labels = dict()  # Store all unique occurrences of each tag, artist name, album name
     unique_tracks = set()  # Set of tuples (artist, title) to avoid duplicates
-    played_tracks = []
+    played_tracks_tags = []
+    played_tracks_by_user = dict()  # Dict where keys are usernames and value lists of their played tracks
+    query_tracks = dict()
 
     start_time_total = time.time()
 
@@ -34,13 +40,21 @@ def process_data():
             with open(filepath, encoding="utf8") as file:
                 user_time = time.time()
                 username = filename.replace(".json", '')
+                played_tracks_user = list()
                 print(f'Processing data for {username}')
                 line_count = -1
                 # Use most recent tracks as test data
                 for line in file:
                     line_count += 1
-                    if line_count < 100:
+                    played_track = None
+                    if line_count <= QUERY_TRACKS:
+                        if username not in query_tracks:
+                            query_tracks[username] = list()
+                        played_track = json.loads(line)
+                        query_tracks[username].append(played_track)
+                    elif line_count <= TEST_DATA_TRACKS:
                         continue
+
                     played_track = json.loads(line)
                     top_tags = played_track['top_tags']
                     artist_name = played_track['artist']['name']
@@ -81,8 +95,10 @@ def process_data():
                             count += 1
 
                     # Add tags to list of played tracks
-                    played_tracks.append({'user': username, 'index': line_count, 'labels': filtered_labels})
+                    played_tracks_tags.append({'user': username, 'index': line_count, 'labels': filtered_labels})
+                    played_tracks_user.append(played_track)
 
+            played_tracks_by_user[username] = played_tracks_user
             user_taken = time.time() - user_time
             print(f'Processed {line_count} lines in {user_taken}')
 
@@ -91,13 +107,101 @@ def process_data():
     print("Saving labels...")
     save_labels(list(found_labels.keys()))
     print("Saving index...")
-    save_index(played_tracks)
+    save_index(played_tracks_tags)
+    print("Calculating baselines...")
+    calculate_baselines(played_tracks_by_user, query_tracks)
     print('Loading into matrix...')
     start_time = time.time()
-    df = put_into_matrix(found_labels, played_tracks)
+    df = put_into_matrix(found_labels, played_tracks_tags)
     time_taken = time.time() - start_time
     print(f"Time taken: {time_taken}")
     return df
+
+
+def baseline_most_common(played_tracks):
+    occurrences = dict()
+    for track in played_tracks:
+        name = track['title'] + "_" + track['artist']['name']
+        count = occurrences[name][0] if name in occurrences else 0
+        occurrences[name] = (count + 1, track)
+    # Sort tracks by occurences
+    descending = sorted(occurrences.items(), key=lambda x: x[1][0], reverse=True)[:90]
+    return_list = []
+    for item in descending:
+        return_list.append(item[1][1])
+    return return_list
+
+
+def baseline_most_recent(played_tracks):
+    return played_tracks[:90]
+
+
+def baseline_random(played_tracks):
+    amount = 90 if len(played_tracks) > 90 else len(played_tracks)
+    return random.choices(played_tracks, k=amount)
+
+
+def save_baseline(username, baseline, predicted_tracks):
+    with open(os.path.join(BASELINES_PATH, f'{username}_{baseline}.json'), "w", encoding="utf8") as file:
+        for track in predicted_tracks:
+            file.write(json.dumps(track, separators=(',', ':')) + "\n")
+
+
+def baseline_artist_most_common(played_tracks, artist):
+    occurrences = dict()
+    for track in played_tracks:
+        if track['artist']['name'] == artist:
+            name = track['title'] + "_" + track['artist']['name']
+            count = occurrences[name][0] if name in occurrences else 0
+            occurrences[name] = (count + 1, track)
+    # Sort tracks by occurences
+    descending = sorted(occurrences.items(), key=lambda x: x[1][0], reverse=True)[:9]
+    return_list = []
+    for item in descending:
+        return_list.append(item[1][1])
+    return return_list
+
+
+def baseline_tag_most_common(played_tracks, tag):
+    occurrences = dict()
+    for track in played_tracks:
+        for tag_yoke in track['top_tags']:
+            if tag == tag_yoke['name']:
+                name = track['title'] + "_" + track['artist']['name']
+                count = occurrences[name][0] if name in occurrences else 0
+                occurrences[name] = (count + 1, track)
+                break
+    # Sort tracks by occurences
+    descending = sorted(occurrences.items(), key=lambda x: x[1][0], reverse=True)[:9]
+    return_list = []
+    for item in descending:
+        return_list.append(item[1][1])
+    return return_list
+
+
+def calculate_baselines(played_tracks_by_user: dict, query_tracks: dict):
+    all_tracks = list(itertools.chain(*played_tracks_by_user.values()))
+    overall_most_common = baseline_most_common(all_tracks)
+    save_baseline("ALL_USERS", "most_common", overall_most_common)
+    for username, played_tracks in played_tracks_by_user.items():
+        user_most_common = baseline_most_common(played_tracks)
+        save_baseline(username, "most_common", user_most_common)
+
+        most_recent = baseline_most_recent(played_tracks)
+        save_baseline(username, "most_common", most_recent)
+
+        user_random = baseline_random(played_tracks)
+        save_baseline(username, "most_common", user_random)
+
+        # Predictions based off of query tracks
+        artists_most_common = list()
+        tags_most_common = list()
+        for query_track in query_tracks[username]:
+            artists_most_common += baseline_artist_most_common(all_tracks, query_track['artist']['name'])
+            top_tag = query_track['top_tags'][0]['name'] if len(query_track['top_tags']) > 0 else ''
+            tags_most_common += baseline_tag_most_common(all_tracks, top_tag)
+        save_baseline(username, "artist_most_common", artists_most_common)
+        save_baseline(username, "tag_most_common", tags_most_common)
 
 
 # Save list of labels to csv
@@ -158,6 +262,8 @@ def train_models(df):
 
 
 def main():
+    os.makedirs(SAVED_PATH, exist_ok=True)
+    os.makedirs(BASELINES_PATH, exist_ok=True)
     print("Loading data...")
     df = process_data()
     print(f"Data loaded into dataframe of shape {df.shape}")
