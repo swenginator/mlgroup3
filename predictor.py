@@ -184,7 +184,8 @@ def predict_model(model):
 
 
 # Compares predicted tracks for a given user to what they actually listened to
-def compare(username, result, averages):
+def compare(username, result):
+    averages = [0, 0, 0, 0]
     future_tacks = result.future_tracks[username]
     predictions = result.predicted_tracks
 
@@ -227,20 +228,20 @@ def compare(username, result, averages):
                     tags_correct += 1
 
         count += 1
-    print(username)
-    print("Titles: {:.2%}".format(titles_correct / count))
-    print("Artist: {:.2%}".format(artists_correct / count))
-    print("Album: {:.2%}".format(albums_correct / count))
-    print("Tags: {:.2%}".format(tags_correct / total_tags))
-    print("----------")
-    print()
+    # print(username)
+    # print("Titles: {:.2%}".format(titles_correct / count))
+    # print("Artist: {:.2%}".format(artists_correct / count))
+    # print("Album: {:.2%}".format(albums_correct / count))
+    # print("Tags: {:.2%}".format(tags_correct / total_tags))
+    # print("----------")
+    # print()
 
-    averages[0] += 1
+    averages[0] += titles_correct / count
+    averages[1] += artists_correct / count
+    averages[2] += albums_correct / count
+    averages[3] += tags_correct / total_tags
 
-    averages[1] += titles_correct / count
-    averages[2] += artists_correct / count
-    averages[3] += albums_correct / count
-    averages[4] += tags_correct / total_tags
+    return averages
 
 
 class Result:
@@ -255,18 +256,36 @@ class Result:
 
 
 def main():
-    averages = [0, 0, 0, 0, 0]
-    loaded_model = pickle.load(open(MODEL_NAME, 'rb'))
-    results = predict_model(loaded_model)
+    all_averages = list()
+    for metric in METRICS:
+        model_name = f'{metric}_{MODEL_NAME}'
+        print(f"Predicting using {model_name}")
+        loaded_model = pickle.load(open(model_name, 'rb'))
+        results = predict_model(loaded_model)
 
-    for username, result in results.items():
-        compare(username, result, averages)
+        model_averages = [0, 0, 0, 0]
+        count = 0
+        for username, result in results.items():
+            count += 1
+            user_averages = compare(username, result)
+            for i, ave in enumerate(user_averages):
+                model_averages[i] += ave
 
-    print("Overall Average")
-    print("Title: {:.2%}".format(averages[1] / averages[0]))
-    print("Artist: {:.2%}".format(averages[2] / averages[0]))
-    print("Album: {:.2%}".format(averages[3] / averages[0]))
-    print("Tags: {:.2%}".format(averages[4] / averages[0]))
+        for i, ave in enumerate(model_averages):
+            model_averages[i] /= count
+
+        all_averages.append(model_averages)
+
+        print(f"Overall Average for {model_name}")
+        print("Title: {:.2%}".format(model_averages[0]))
+        print("Artist: {:.2%}".format(model_averages[1]))
+        print("Album: {:.2%}".format(model_averages[2]))
+        print("Tags: {:.2%}".format(model_averages[3]))
+        print('\n\n')
+
+    for metric, model_averages in zip(METRICS, all_averages):
+        ave_string = ''.join(f' & {ave:.2}' for ave in model_averages)
+        print(f'{metric}{ave_string}\\\\\n\\hline')
 
 
 if __name__ == "__main__":
