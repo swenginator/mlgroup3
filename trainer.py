@@ -5,10 +5,14 @@ import os
 import json
 import re
 import time
+import csv
 
 from sklearn.neighbors import NearestNeighbors
 
-CSV_PATH = "labels.csv"
+# Load up training data, train model and save it
+
+LABELS_PATH = "labels.csv"  # Save the found labels for prediction time
+INDEX_PATH = "index.csv"  # Save indices of training tracks for prediction time
 MODEL_NAME = "model.sav"
 SAVED_PATH = "saved"
 TEST_DATA_TRACKS = 100
@@ -30,11 +34,11 @@ def process_data():
                 user_time = time.time()
                 username = filename.replace(".json", '')
                 print(f'Processing data for {username}')
-                line_count = 0
+                line_count = -1
                 # Use most recent tracks as test data
                 for line in file:
                     line_count += 1
-                    if line_count <= 100:
+                    if line_count < 100:
                         continue
                     played_track = json.loads(line)
                     top_tags = played_track['top_tags']
@@ -69,7 +73,7 @@ def process_data():
                             count += 1
 
                     # Add tags to list of played tracks
-                    played_tracks.append(filtered_labels)
+                    played_tracks.append({'user': username, 'index': line_count, 'labels': filtered_labels})
 
             user_taken = time.time() - user_time
             print(f'Processed {line_count} lines in {user_taken}')
@@ -78,6 +82,8 @@ def process_data():
     print(f'Took {total_taken} to process all files')
     print("Saving labels...")
     save_labels(list(found_labels.keys()))
+    print("Saving index...")
+    save_index(played_tracks)
     print('Loading into dataframe...')
     start_time = time.time()
     df = put_into_dataframe(found_labels, played_tracks)
@@ -88,10 +94,19 @@ def process_data():
 
 # Save list of labels to csv
 def save_labels(labels):
-    with open(CSV_PATH, "w") as file:
-        for i in range(len(labels) - 1):
-            file.write(labels[i] + ",")
-        file.write(labels[-1] + '\n')
+    with open(LABELS_PATH, "w") as file:
+        writer = csv.writer(file)
+        writer.writerow(labels)
+
+
+# Get list of played tracks and save index of user and row
+def save_index(played_tracks):
+    with open(INDEX_PATH, "w") as file:
+        writer = csv.writer(file)
+        for track in played_tracks:
+            user = track['user']
+            index = track['index']  # Row in the user file where this played track is
+            writer.writerow([user, index])
 
 
 def put_into_dataframe(found_labels, played_tracks):
@@ -103,9 +118,10 @@ def put_into_dataframe(found_labels, played_tracks):
 
     # Make dense array
     for played_track in played_tracks:
+        track_labels = played_track['labels']
         row = []
         for label in column_headers:
-            row.append(1 if label in played_track else 0)
+            row.append(1 if label in track_labels else 0)
 
         # Make numpy array of indices where it's 1
         sparr = pandas.arrays.SparseArray(row, fill_value=0)
