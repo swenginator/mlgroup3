@@ -31,7 +31,7 @@ def process_data():
     for filename in os.listdir(SAVED_PATH):
         filepath = os.path.join(SAVED_PATH, filename)
         if os.path.isfile(filepath):
-            with open(filepath) as file:
+            with open(filepath, encoding="utf8") as file:
                 user_time = time.time()
                 username = filename.replace(".json", '')
                 print(f'Processing data for {username}')
@@ -102,14 +102,14 @@ def process_data():
 
 # Save list of labels to csv
 def save_labels(labels):
-    with open(LABELS_PATH, "w") as file:
+    with open(LABELS_PATH, "w", encoding="utf8") as file:
         writer = csv.writer(file)
         writer.writerow(labels)
 
 
 # Get list of played tracks and save index of user and row
 def save_index(played_tracks):
-    with open(INDEX_PATH, "w") as file:
+    with open(INDEX_PATH, "w", encoding="utf8") as file:
         writer = csv.writer(file)
         for track in played_tracks:
             user = track['user']

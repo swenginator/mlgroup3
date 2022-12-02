@@ -23,7 +23,7 @@ def load_test_data():
     found_labels = load_labels()
     query_track_labels = []  # Tracks to predict from
     query_tracks = list()  # List of tuples (username, query track)
-    future_tracks = dict()  # Keys are usernames and values list of tracks to compare predictions to
+    future_tracks = dict()  # Keys are usernames, and values list of tracks to compare predictions to
 
     start_time_total = time.time()
 
@@ -31,7 +31,7 @@ def load_test_data():
     for filename in os.listdir(SAVED_PATH):
         filepath = os.path.join(SAVED_PATH, filename)
         if os.path.isfile(filepath):
-            with open(filepath) as file:
+            with open(filepath, encoding="utf8") as file:
                 user_time = time.time()
                 username = filename.replace(".json", '')
                 print(f'Processing data for {username}')
@@ -84,7 +84,6 @@ def load_test_data():
 
             user_taken = time.time() - user_time
             print(f'Processed {line_count} lines in {user_taken}')
-        break  # Do with only one user
 
     total_taken = time.time() - start_time_total
     print(f'Took {total_taken} to process all files')
@@ -99,7 +98,7 @@ def load_test_data():
 # Return specified track object
 def get_track(username: str, linenum: int):
     # Open up specified user file
-    with open(os.path.join(SAVED_PATH, f'{username}.json')) as file:
+    with open(os.path.join(SAVED_PATH, f'{username}.json'), encoding="utf8") as file:
         index = 0
         for line in file:
             if index < linenum:
@@ -111,7 +110,7 @@ def get_track(username: str, linenum: int):
 # Index is list of tuples of (username, linenum)
 def load_index():
     index = list()
-    with open(INDEX_PATH) as csvfile:
+    with open(INDEX_PATH, encoding="utf8") as csvfile:
         for row in csv.reader(csvfile):
             row_tuple = ()
             for item in row:
@@ -122,7 +121,7 @@ def load_index():
 
 def load_labels():
     labels = dict()
-    with open(LABELS_PATH) as csvfile:
+    with open(LABELS_PATH, encoding="utf8") as csvfile:
         for row in csv.reader(csvfile):
             for label in row:
                 labels[label] = None
@@ -160,7 +159,7 @@ def predict_model(model):
     predictions = model.kneighbors(X=df, n_neighbors=9, return_distance=False)
 
     query_count = 0
-    results = dict()  # Keys are usernames, values list of tuples of (query, list(predictions))
+    results = dict()  # Keys are usernames, values are result class
     for query in predictions:
         predicted_tracks = list()  # This will be predictions for a single query
         for predicted_track_index in query:
@@ -170,25 +169,45 @@ def predict_model(model):
 
         username, query_track = query_tracks[query_count]
         if username not in results:
-            results[username] = list()
-        results[username].append((query_track, predicted_tracks))
+            results[username] = Result()
+        result = results[username]
+        result.query_tracks.append(query_track)
+        result.predicted_tracks.append(predicted_tracks)
+        result.future_tracks = future_tracks
 
         query_count += 1
 
     return results
 
 
+class Result:
+    future_tracks: list  # The most recent of the user's tracks
+    query_tracks: list  # The 10 least recent of the test tracks
+    predicted_tracks: list  # The 90 tracks predicted from the query tracks as lists of 10
+
+    def __init__(self):
+        self.future_tracks = list()
+        self.query_tracks = list()
+        self.predicted_tracks = list()
+
+
 def main():
     loaded_model = pickle.load(open(MODEL_NAME, 'rb'))
     results = predict_model(loaded_model)
 
-    for username, pair_list in results.items():
-        for query, predictions in pair_list:
+    for username, result in results.items():
+        future_tracks = result.future_tracks
+        for i in range(len(result.query_tracks)):
+            query = result.query_tracks[i]
             print(f"Query track from {username}:")
-            print(query)
+            print(f"{query['artist']['name']} - {query['title']}")
             print("Predicted tracks:")
-            for prediction in predictions:
-                print(prediction)
+            for prediction in result.predicted_tracks[i]:
+                print(f"{prediction['artist']['name']} - {prediction['title']}")
+            print()
+
+        print()
+        print()
 
 
 if __name__ == "__main__":
