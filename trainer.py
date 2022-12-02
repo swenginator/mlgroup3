@@ -1,4 +1,3 @@
-import numpy
 import pickle
 import os
 import json
@@ -135,7 +134,7 @@ def put_into_dataframe(found_labels, played_tracks):
             if label in track_labels:
                 data.append(1)
                 row_indices.append(row_index)
-                col_indices.append(row_index)
+                col_indices.append(col_index)
 
     sparr = csr_array((data, (row_indices, col_indices)),
                       shape=(len(played_tracks), len(column_headers)),
