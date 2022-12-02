@@ -9,10 +9,12 @@ from scipy.sparse import csr_array
 LABELS_PATH = "labels.csv"
 INDEX_PATH = "index.csv"  # Indices of training tracks
 SAVED_PATH = "saved"
+BASELINES_PATH = "baselines"
 TEST_DATA_TRACKS = 100
 QUERY_TRACKS = 10
 MODEL_NAME = "model.sav"
-METRICS = ['l1', 'manhattan', 'cityblock', 'cosine', 'l2', 'euclidean']
+METRICS = ['manhattan', 'cosine', 'euclidean']
+BASELINES_TYPES = ["most_common", "most_recent", "random", "artist_most_common", "tag_most_common"]
 
 
 # Get query tracks and "future" tracks
@@ -41,8 +43,9 @@ def load_test_data():
                     line_count += 1
                     if line_count > TEST_DATA_TRACKS:  # Training data, ignore
                         break
+
                     played_track = json.loads(line)
-                    if line_count > QUERY_TRACKS:  # Future tracks
+                    if line_count <= TEST_DATA_TRACKS - QUERY_TRACKS:  # Future tracks
                         if username not in future_tracks:
                             future_tracks[username] = list()
                         future_tracks[username].append(played_track)
@@ -129,6 +132,24 @@ def load_labels():
     return labels
 
 
+def load_baseline(username, baseline_type):
+    predictions = list()
+    # Chunk it up in lists of 9 each to match the queries
+    with open(os.path.join(BASELINES_PATH, f'{username}_{baseline_type}.json'), encoding="utf8") as file:
+        current_list = list()
+        count = 0
+        for line in file:
+            track = json.loads(line)
+            current_list.append(track)
+            if count >= 8:
+                predictions.append(current_list)
+                current_list = list()
+                count = 0
+            else:
+                count += 1
+    return predictions
+
+
 def put_into_matrix(found_labels, played_tracks):
     if None in found_labels:
         del found_labels[None]
@@ -155,9 +176,8 @@ def put_into_matrix(found_labels, played_tracks):
     return sparr
 
 
-def predict_model(model):
+def predict_model(model, df, query_tracks, future_tracks):
     track_index = load_index()
-    df, query_tracks, future_tracks = load_test_data()
     # For every 10 query tracks we have 90 future tracks, so predict 9 neighbours for each
     predictions = model.kneighbors(X=df, n_neighbors=9, return_distance=False)
 
@@ -176,7 +196,7 @@ def predict_model(model):
         result = results[username]
         result.query_tracks.append(query_track)
         result.predicted_tracks.append(predicted_tracks)
-        result.future_tracks = future_tracks
+        result.future_tracks = future_tracks[username]
 
         query_count += 1
 
@@ -184,9 +204,9 @@ def predict_model(model):
 
 
 # Compares predicted tracks for a given user to what they actually listened to
-def compare(username, result):
+def compare(result):
     averages = [0, 0, 0, 0]
-    future_tacks = result.future_tracks[username]
+    future_tacks = result.future_tracks
     predictions = result.predicted_tracks
 
     predicted_titles = set()
@@ -228,13 +248,6 @@ def compare(username, result):
                     tags_correct += 1
 
         count += 1
-    # print(username)
-    # print("Titles: {:.2%}".format(titles_correct / count))
-    # print("Artist: {:.2%}".format(artists_correct / count))
-    # print("Album: {:.2%}".format(albums_correct / count))
-    # print("Tags: {:.2%}".format(tags_correct / total_tags))
-    # print("----------")
-    # print()
 
     averages[0] += titles_correct / count
     averages[1] += artists_correct / count
@@ -256,18 +269,25 @@ class Result:
 
 
 def main():
+    # Make directories
+    os.makedirs(SAVED_PATH, exist_ok=True)
+    os.makedirs(BASELINES_PATH, exist_ok=True)
+
+    df, query_tracks, future_tracks = load_test_data()
+
     all_averages = list()
+    results = None
     for metric in METRICS:
         model_name = f'{metric}_{MODEL_NAME}'
         print(f"Predicting using {model_name}")
         loaded_model = pickle.load(open(model_name, 'rb'))
-        results = predict_model(loaded_model)
+        results = predict_model(loaded_model, df, query_tracks, future_tracks)
 
         model_averages = [0, 0, 0, 0]
         count = 0
         for username, result in results.items():
             count += 1
-            user_averages = compare(username, result)
+            user_averages = compare(result)
             for i, ave in enumerate(user_averages):
                 model_averages[i] += ave
 
@@ -283,7 +303,28 @@ def main():
         print("Tags: {:.2%}".format(model_averages[3]))
         print('\n\n')
 
-    for metric, model_averages in zip(METRICS, all_averages):
+    for baseline_type in BASELINES_TYPES:
+        baseline_averages = [0, 0, 0, 0]
+        count = 0
+        for username, result in results.items():
+            baseline = load_baseline(username, baseline_type)
+            result.predicted_tracks = baseline
+
+            count += 1
+            user_averages = compare(result)
+            for i, ave in enumerate(user_averages):
+                baseline_averages[i] += ave
+
+            for i, ave in enumerate(baseline_averages):
+                baseline_averages[i] /= count
+
+        all_averages.append(baseline_averages)
+
+    filtered_types = list()
+    for baseline_type in BASELINES_TYPES:
+        filtered_types.append(baseline_type.replace("_", " "))
+
+    for metric, model_averages in zip((METRICS + filtered_types), all_averages):
         ave_string = ''.join(f' & {ave:.2}' for ave in model_averages)
         print(f'{metric}{ave_string}\\\\\n\\hline')
 

@@ -188,10 +188,10 @@ def calculate_baselines(played_tracks_by_user: dict, query_tracks: dict):
         save_baseline(username, "most_common", user_most_common)
 
         most_recent = baseline_most_recent(played_tracks)
-        save_baseline(username, "most_common", most_recent)
+        save_baseline(username, "most_recent", most_recent)
 
         user_random = baseline_random(played_tracks)
-        save_baseline(username, "most_common", user_random)
+        save_baseline(username, "random", user_random)
 
         # Predictions based off of query tracks
         artists_most_common = list()
