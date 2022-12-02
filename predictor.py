@@ -109,7 +109,7 @@ def get_track(username: str, linenum: int):
 # Index is list of tuples of (username, linenum)
 def load_index():
     index = list()
-    with open(INDEX_PATH, encoding="utf8",newline='') as csvfile:
+    with open(INDEX_PATH, encoding="utf8", newline='') as csvfile:
         for row in csv.reader(csvfile):
             row_tuple = ()
             for item in row:
@@ -120,7 +120,7 @@ def load_index():
 
 def load_labels():
     labels = dict()
-    with open(LABELS_PATH, encoding="utf8",newline='') as csvfile:
+    with open(LABELS_PATH, encoding="utf8", newline='') as csvfile:
         for row in csv.reader(csvfile):
             for label in row:
                 labels[label] = None
@@ -150,9 +150,7 @@ def put_into_matrix(found_labels, played_tracks):
                       shape=(len(played_tracks), len(column_headers)),
                       dtype=int)
 
-    # df = pandas.DataFrame(rows, columns=column_headers, dtype=numpy.uint8)
     return sparr
-
 
 
 # Returns dict where keys are usernames, values list of tuples of (query, list(predictions))
@@ -183,43 +181,42 @@ def predict_model(model):
 
     return results
 
+
 def compare(username, result):
     future_tacks = result.future_tracks[username]
     query_tracks = result.query_tracks
     predicted_tracks = result.predicted_tracks
-    
+
     predicted_titles = set()
     predicted_artists = set()
     predicted_albums = set()
     predicted_tags = set()
-    
+
     count = 0
     titles_correct = 0
     artists_correct = 0
     albums_correct = 0
     tags_correct = 0
-    
+
     for i in range(len(query_tracks)):
         predicted_titles.add(result.query_tracks[i]['title'])
         predicted_artists.add(result.query_tracks[i]['artist']['name'])
-        #predicted_albums.add(result.query_tracks[i]['albums'])
-        #predicted_titles.add(result.query_tracks[i]['tags'])
+        # predicted_albums.add(result.query_tracks[i]['albums'])
+        # predicted_titles.add(result.query_tracks[i]['tags'])
         for prediction in result.predicted_tracks[i]:
             predicted_titles.add(prediction['title'])
             predicted_artists.add(prediction['artist']['name'])
-            #predicted_albums.add(prediction['album'])
-    
+            # predicted_albums.add(prediction['album'])
+
     for track in future_tacks:
-        titles_correct+= int(track['title'] in predicted_titles)
-        artists_correct+= int(track['artist']['name'] in predicted_titles)
-        #albums_correct+= int(track['album'] in predicted_titles)
-        count+=1
-    print(f"Titles: {titles_correct/count}")
-    print(f"Artists: {titles_correct/count}")
-    #print(f"Albums: {titles_correct/count}")
-    
-    
-    
+        titles_correct += int(track['title'] in predicted_titles)
+        artists_correct += int(track['artist']['name'] in predicted_titles)
+        # albums_correct+= int(track['album'] in predicted_titles)
+        count += 1
+    print(f"Titles: {titles_correct / count}")
+    print(f"Artists: {titles_correct / count}")
+    # print(f"Albums: {titles_correct/count}")
+
 
 class Result:
     future_tracks: list  # The most recent of the user's tracks
@@ -240,14 +237,14 @@ def main():
         compare(username, result)
         for i in range(len(result.query_tracks)):
             query = result.query_tracks[i]
-            #print(f"Query track from {username}:")
-            #print(f"{query['artist']['name']} - {query['title']}")
-            #print("Predicted tracks:")
-            #for prediction in result.predicted_tracks[i]:
-                #print(f"{prediction['artist']['name']} - {prediction['title']}")
-            #print()
-        #print()
-        #print()
+            # print(f"Query track from {username}:")
+            # print(f"{query['artist']['name']} - {query['title']}")
+            # print("Predicted tracks:")
+            # for prediction in result.predicted_tracks[i]:
+            # print(f"{prediction['artist']['name']} - {prediction['title']}")
+            # print()
+        # print()
+        # print()
 
 
 if __name__ == "__main__":
