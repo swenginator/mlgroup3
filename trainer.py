@@ -22,6 +22,7 @@ TEST_DATA_TRACKS = 100
 def process_data():
     # Have to use dict instead of set because it's sorted
     found_labels = dict()  # Store all unique occurrences of each tag, artist name, album name
+    unique_tracks = set()  # Set of tuples (artist, title) to avoid duplicates
     played_tracks = []
 
     start_time_total = time.time()
@@ -44,6 +45,13 @@ def process_data():
                     top_tags = played_track['top_tags']
                     artist_name = played_track['artist']['name']
                     album_name = played_track['album']['name']
+                    title = played_track['title']
+
+                    # Avoid duplicate tracks
+                    if (artist_name, title) in unique_tracks:
+                        continue
+                    else:
+                        unique_tracks.add((artist_name, title))
 
                     filtered_labels = []
                     if artist_name is not None and len(artist_name) > 0:
