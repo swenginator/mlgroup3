@@ -7,20 +7,23 @@ import re
 import time
 import csv
 
-from sklearn.neighbors import NearestNeighbors
-
 LABELS_PATH = "labels.csv"
 INDEX_PATH = "index.csv"  # Indices of training tracks
 SAVED_PATH = "saved"
 TEST_DATA_TRACKS = 100
+QUERY_TRACKS = 10
 MODEL_NAME = "model.sav"
 
 
-# Process user listened tracks
+# Get query tracks and "future" tracks
+# e.g. use 10 test tracks to predict next 90 and compare
+# Returns dataframe, query tracks, and list of future tracks
 def load_test_data():
     # Have to use dict instead of set because it's sorted
     found_labels = load_labels()
-    played_tracks = []
+    query_track_labels = []  # Tracks to predict from
+    query_tracks = list()  # List of tuples (username, query track)
+    future_tracks = dict()  # Keys are usernames and values list of tracks to compare predictions to
 
     start_time_total = time.time()
 
@@ -36,9 +39,18 @@ def load_test_data():
                 # Use most recent tracks as test data
                 for line in file:
                     line_count += 1
-                    if line_count > 100:
+                    if line_count > TEST_DATA_TRACKS:  # Training data, ignore
                         break
                     played_track = json.loads(line)
+                    if line_count > QUERY_TRACKS:  # Future tracks
+                        if username not in future_tracks:
+                            future_tracks[username] = list()
+                        future_tracks[username].append(played_track)
+                        continue
+                    else:
+                        query_tracks.append((username, played_track))
+
+                    # Remaining tracks are query tracks to predict from
                     top_tags = played_track['top_tags']
                     artist_name = played_track['artist']['name']
                     album_name = played_track['album']['name']
@@ -68,7 +80,7 @@ def load_test_data():
                             count += 1
 
                     # Add tags to list of played tracks
-                    played_tracks.append(filtered_labels)
+                    query_track_labels.append(filtered_labels)
 
             user_taken = time.time() - user_time
             print(f'Processed {line_count} lines in {user_taken}')
@@ -78,10 +90,10 @@ def load_test_data():
     print(f'Took {total_taken} to process all files')
     print('Loading into dataframe...')
     start_time = time.time()
-    df = put_into_dataframe(found_labels, played_tracks)
+    df = put_into_dataframe(found_labels, query_track_labels)
     time_taken = time.time() - start_time
     print(f"Time taken: {time_taken}")
-    return df
+    return df, query_tracks, future_tracks
 
 
 # Return specified track object
@@ -140,21 +152,43 @@ def put_into_dataframe(found_labels, played_tracks):
     return df
 
 
+# Returns dict where keys are usernames, values list of tuples of (query, list(predictions))
 def predict_model(model):
     track_index = load_index()
-    df = load_test_data()
-    # Only predict from one track for testing
-    predictions = model.kneighbors(X=df.iloc[:1], n_neighbors=20, return_distance=False)
-    for queries in predictions:
-        for i in queries:
-            username, linenum = track_index[i]
+    df, query_tracks, future_tracks = load_test_data()
+    # For every 10 query tracks we have 90 future tracks, so predict 9 neighbours for each
+    predictions = model.kneighbors(X=df, n_neighbors=9, return_distance=False)
+
+    query_count = 0
+    results = dict()  # Keys are usernames, values list of tuples of (query, list(predictions))
+    for query in predictions:
+        predicted_tracks = list()  # This will be predictions for a single query
+        for predicted_track_index in query:
+            username, linenum = track_index[predicted_track_index]
             predicted_track = get_track(username, int(linenum))
-            print(predicted_track)
+            predicted_tracks.append(predicted_track)
+
+        username, query_track = query_tracks[query_count]
+        if username not in results:
+            results[username] = list()
+        results[username].append((query_track, predicted_tracks))
+
+        query_count += 1
+
+    return results
 
 
 def main():
     loaded_model = pickle.load(open(MODEL_NAME, 'rb'))
-    predict_model(loaded_model)
+    results = predict_model(loaded_model)
+
+    for username, pair_list in results.items():
+        for query, predictions in pair_list:
+            print(f"Query track from {username}:")
+            print(query)
+            print("Predicted tracks:")
+            for prediction in predictions:
+                print(prediction)
 
 
 if __name__ == "__main__":
